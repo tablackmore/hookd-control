@@ -261,6 +261,16 @@ pub enum Target {
     /// and drives the cluster LEDs via `FeedbackState::pad_mode`; there is no
     /// engine action. `Kind::Trigger` — fires on press, host ignores the release.
     PadModeSelect(Deck, PadMode),
+    // ── Mix Grid (deck-less, both decks at once) ─────────────────────────
+    /// Mix Grid FLIP: trade the audible state of every stem column that
+    /// differs between deck A and deck B. Fires per press like `Sync` — the
+    /// HOST owns the pending/cancel state and the quantized boundary (a
+    /// second press before the boundary cancels), so there is no
+    /// mapping-side latch to go stale.
+    MixGridFlipAll,
+    /// Mix Grid flip for ONE stem column (stem index, 0-based), same
+    /// per-press/host-owned semantics as [`Target::MixGridFlipAll`].
+    MixGridFlip(u8),
 }
 
 impl Target {
@@ -296,6 +306,7 @@ impl Target {
             DrumPitchLock(_) | FxBusMute(_) | FxBusSolo(_) | FxSlotEnable(..) => Kind::Toggle,
             Riser(..) | BeatFxSelect(_) | BeatFxBeat(_) | BeatFxAuto | BeatFxTap | BeatFxOn
             | BeatFxRelease => Kind::Trigger,
+            MixGridFlipAll | MixGridFlip(_) => Kind::Trigger,
         }
     }
 
@@ -381,6 +392,8 @@ impl Target {
             BeatFxLevel => "Beat FX · Level/Depth".into(),
             BeatFxOn => "Beat FX · On/Off".into(),
             BeatFxRelease => "Beat FX · Release".into(),
+            MixGridFlipAll => "Mix Grid · Flip all".into(),
+            MixGridFlip(s) => format!("Mix Grid · Flip stem {}", u16::from(s) + 1),
             PadModeSelect(d, m) => {
                 let name = match m {
                     PadMode::HotCue => "Hot Cue",
@@ -1411,6 +1424,16 @@ mod tests {
         assert_eq!(Target::BeatFxLevel.label(), "Beat FX · Level/Depth");
         assert_eq!(Target::BeatFxAuto.label(), "Beat FX · Auto BPM");
         assert_eq!(Target::BeatFxTap.label(), "Beat FX · Tap tempo");
+    }
+
+    #[test]
+    fn mix_grid_flip_targets_are_triggers_with_labels() {
+        assert_eq!(Target::MixGridFlipAll.kind(), Kind::Trigger);
+        assert_eq!(Target::MixGridFlip(2).kind(), Kind::Trigger);
+        assert_eq!(Target::MixGridFlipAll.label(), "Mix Grid · Flip all");
+        assert_eq!(Target::MixGridFlip(2).label(), "Mix Grid · Flip stem 3");
+        // u8::MAX must not overflow the 1-based label.
+        assert_eq!(Target::MixGridFlip(255).label(), "Mix Grid · Flip stem 256");
     }
 
     #[test]
