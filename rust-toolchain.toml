@@ -3,5 +3,5 @@
 # clippy (0.1.96 vs CI 1.97) and reddened a `question_mark` lint on unrelated
 # code. Bump this deliberately (and the matching `toolchain:` in ci.yml).
 [toolchain]
-channel = "1.97"
+channel = "1.99.1"
 components = ["clippy", "rustfmt"]
